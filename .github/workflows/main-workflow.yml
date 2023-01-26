@@ -1,4 +1,4 @@
-name: Build Run
+name: Build and Run
 
 on: [push, pull_request]
 
@@ -19,19 +19,24 @@ jobs:
       with:
         fetch-depth: 0
 
-    # Add  MSBuild to the PATH: https://github.com/microsoft/setup-msbuild
-    - name: Setup MSBuild.exe
-      uses: microsoft/setup-msbuild@2008f912f56e61277eefaac6d1888b750582aa16
-      env:
-        ACTIONS_ALLOW_UNSECURE_COMMANDS: 'true'
+    # Install the .NET Core workload
+    - name: Install .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 3.1.101
 
+    - name: Run tests and collect coverage
+      run: dotnet test --collect:"XPlat Code Coverage"
 
-    # Restore paages, MSBUild the app, run the app
-    - name: Build the App
-      shell: cmd
-      run: call build.bat 
+    - name: Install coverage report generator
+      run: dotnet tool install -g dotnet-reportgenerator-globaltool
 
-    # Run the app
-    - name: Run the App
-      shell: cmd
-      run: call run.bat
+    - name: Make coverage report
+      run: reportgenerator "-reports:TypewiseAlert.Test\TestResults\*\*.xml" "-targetdir:coverage"
+    
+    - name: Create coverage artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: coverage
+        path: coverage
+        retention-days: 21
